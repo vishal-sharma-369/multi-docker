@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - feature
+  pull_request:
+    branches:
+      - master
+      - feature
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build React test image
+        run: docker build -t stephengrider/react-test -f ./client/Dockerfile.dev ./client
+
+      - name: Run tests
+        run: docker run -e CI=true stephengrider/react-test npm test
+
+      - name: Build client image
+        if: success()
+        run: docker build -t stephengrider/multi-client ./client
+
+      - name: Build nginx image
+        if: success()
+        run: docker build -t stephengrider/multi-nginx ./nginx
+
+      - name: Build server image
+        if: success()
+        run: docker build -t stephengrider/multi-server ./server
+
+      - name: Build worker image
+        if: success()
+        run: docker build -t stephengrider/multi-worker ./worker
